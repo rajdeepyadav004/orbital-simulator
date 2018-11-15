@@ -1,0 +1,43 @@
+#lang racket
+(require "vector-defination.rkt"
+         "planet-defination.rkt"
+         
+        )
+(provide (all-defined-out))
+
+
+(struct project( x y r))
+(define (planet-projection planet reference normal distance-from-screen)
+  (define a (v-x normal))
+  (define b (v-y normal))
+  (define c (v-z normal))
+  (define (centre-radius); refrence is a class vector%, normal is struct v(a b c), it is also unit vector
+    (let* ([V0 reference]
+           [V1 (send planet show-position)]
+           [d distance-from-screen]
+           [direction-ratio (sub-vector V1 V0)]
+           [a1 (v-x (send direction-ratio show-vector))]
+           [b1 (v-y (send direction-ratio show-vector))]
+           [c1 (v-z (send direction-ratio show-vector))]
+           [k (/ d (+ (* a a1) (* b b1) (* c c1)))]
+           [V2 (add-vector V0 (send direction-ratio scalar-mult k))]
+           [D (send V2 magnitude)]
+           [r (send planet show-radius)]
+           [radius (/ (* r D) d)])
+      (cons V2 radius)))
+  (define ans (centre-radius))
+  (define centre (car ans))
+  (define radius (cdr ans))
+  (define P (add-vector reference (make-object vector% (* a distance-from-screen)
+                                    (* b distance-from-screen)
+                                    (* c distance-from-screen))))
+  (define (projection)
+    (define vec (sub-vector centre P))
+    (define X (- (v-x (send vec show-vector))))
+    (define D (distance centre P))
+    (define Y (sqrt (- (sqr D) (sqr X))))
+    (cons X Y))
+    
+  (define X0 (car (projection)))
+  (define Y0 (cdr (projection)))
+  (project X0 Y0 radius))

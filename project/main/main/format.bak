@@ -1,0 +1,134 @@
+#lang racket
+(require "vector-defination.rkt" "planet-defination.rkt"
+         "render.rkt"
+         2htdp/image 2htdp/universe)
+
+
+(define base-image (bitmap/file "images/star.jpg"))
+
+(define text1 (text "main-menu" 35 "white"))
+(define text2 (text "default-simulations" 35 "white"))
+(define text3 (text "play" 35 "white"))
+(define text4 (text "about" 35 "white"))
+
+(define (make-rect text)
+  (define h (image-height text))
+  (define w (image-width text))
+  (define rect (rectangle (+ w 5) (+ h 5) 30 "violet"))
+  (overlay/align "middle" "middle"
+                  text rect))
+(define background1
+ (overlay/xy (make-rect text4) -450 -380
+             (overlay/xy (make-rect text3) -460 -330
+              (overlay/xy (make-rect text2) -350 -280
+              (overlay/xy (make-rect text1) -410 -230 base-image)))))
+
+
+
+(define background2
+  (empty-scene 640 480 "black"))
+(define side-image
+  (rectangle 200 480 100 "black"))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(define state 'main-menu)
+;;can be main-menu, play-mode, default simlulations, transitionA-B(A fades and B appear)
+
+(define world%
+  (class object%
+    (super-new)
+    (define list-of-planets '())
+    (define simulation-speed (/ 1 28))
+    (define dt (/ simulation-speed 100))
+    (define point-of-view (make-vector% 0 0 300))
+    (define theta -90)
+    (define phi 0)
+    (define normal (v (* (sin (/ (* pi theta) 180)) (cos (/ (* pi phi) 180))) (* (sin (/ (* pi theta) 180)) (sin (/ (* pi phi) 180))) (cos (/ (* pi theta) 180))))
+    (define distance-from-screen 500)
+
+    
+    (define/public (show-planets)
+      list-of-planets)
+    (define/public (add-planet x)
+      (if (list? x) (append x list-of-planets) (cons x list-of-planets)))
+    (define/public (set-simulation-speed x)
+      (set! simulation-speed x))
+    (define/public (show-normal)
+      normal)
+    (define/public (change-angle ang x)
+      (if (equal? x 'theta) (set! theta (+ theta x))
+          (set! phi (+ theta x))))
+    (define/public (show-point-of-view)
+      point-of-view)
+    (define/public (set-point-of-view a b c)
+      (send point-of-view set-vector a b c))
+    (define/public (show-distance-from-screen)
+      distance-from-screen)
+    (define/public (zoom-in)
+      (set! distance-from-screen (+ 40 distance-from-screen)))
+    (define/public (zoom-out)
+      (set! distance-from-screen (- 40 distance-from-screen)))))
+
+
+
+;(define transition/images)
+;(define transition/scene)
+
+
+
+(define (main x)
+  (big-bang x
+    (on-tick update)
+    (on-key press)
+    (to-draw render)
+    (stop-when (lambda (y) (equal? state 'close)))))
+
+
+
+(define (update w)
+  (define lst (send w show-planets))
+  (map (lambda (planet) (send planet change-planet-state lst)) lst))
+
+
+(define (press w key)
+  (cond [(or (equal? state 'play-mode) (equal? state 'default)
+             (cond
+               [(equal? key "up") (send w change-angle 'theta 5)]
+               [(equal? key "right") (send w change-angle 'phi 5)]
+               [(equal? key "down") (send w change-angle 'theta -5)]
+               [(equal? key "left") (send w change-angle 'phi -5)]
+               [(equal? key "i") (send w zoom-in)]
+               [(equal? key "o") (send w zoom-out)]
+               [(equal? key "w") (let ([v (send w show-point-of-view)])
+                                   (send v set-vector (+ 5 (v-x (send v show-vector))) #t #t))]
+               [(equal? key "s") (let ([v (send w show-point-of-view)])
+                                   (send v set-vector (- 5 (v-x (send v show-vector))) #t #t))]
+               [(equal? key "d") (let ([v (send w show-point-of-view)])
+                                   (send v set-vector (+ 5  #t (v-y (send v show-vector))) #t))]
+               [(equal? key "a") (let ([v (send w show-point-of-view)])
+                                   (send v set-vector #t #t (- 5 (v-y (send v show-vector))) #t))]
+               [(equal? key "e") (let ([v (send w show-point-of-view)])
+                                   (send v set-vector #t #t (+ 5 (v-z (send v show-vector)))))]
+               [(equal? key "q") (let ([v (send w show-point-of-view)])
+                                   (send v set-vector #t #t (+ 5 (v-z (send v show-vector)))))]))]))
+
+
+(define (render w)
+  (define lst (send w show-planets))
+  (define V0 (send w show-point-of-view))
+  (define n (send w show-normal))
+  (define D (send w show-distance-from-screen))
+  (define (f planet image)
+    (define ans (planet-projection planet V0 n D))
+    (overlay/xy (circle (project-r ans) "solid" "red")
+                (* -1 (project-x  ans)) (* -1 (project-y  ans))
+                image))
+  (cond [(equal? state 'main-menu) background1]
+        [else (foldr f background2 lst)]))
+
+           
+
+
+
+
+(define world (make-object world%))
+   

@@ -1,0 +1,4 @@
+#lang racket
+(require 2htdp/image)
+
+(define background (scale 0.5 (bitmap/file "images/blackhole.jpg")))
